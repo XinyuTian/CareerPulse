@@ -1,0 +1,247 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum FactConfidence {
+  CONFIRMED
+  INFERRED
+  NEEDS_REVIEW
+}
+
+enum SectionStatus {
+  MISSING
+  GOOD
+  STALE
+  NEEDS_REVIEW
+}
+
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  UNKNOWN
+}
+
+enum IntakeMode {
+  PAST_EXPERIENCE
+  ONGOING_WORK
+}
+
+enum FollowUpStatus {
+  OPEN
+  SNOOZED
+  COMPLETED
+}
+
+model PersonProfile {
+  id            String         @id @default(cuid())
+  fullName      String?
+  headline      String?
+  targetRoles   String[]
+  industries    String[]
+  strengths     String[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  careerPeriods CareerPeriod[]
+  intakeSessions IntakeSession[]
+  followUpTasks FollowUpTask[]
+}
+
+model CareerPeriod {
+  id             String    @id @default(cuid())
+  profileId      String
+  organization   String
+  roleTitle      String
+  startMonth     DateTime
+  endMonth       DateTime?
+  background     String?
+  location       String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  profile        PersonProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  projects       Project[]
+  stories        Story[]
+
+  @@index([profileId, startMonth(sort: Desc)])
+}
+
+model Project {
+  id                  String              @id @default(cuid())
+  careerPeriodId      String?
+  name                String
+  companyLabel        String?
+  status              ProjectStatus       @default(UNKNOWN)
+  isUnknownBucket     Boolean             @default(false)
+  problem             String?
+  scope               String?
+  stakeholders        String?
+  constraints         String?
+  currentFocusArea    String?
+  startMonth          DateTime?
+  endMonth            DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  period              CareerPeriod?       @relation(fields: [careerPeriodId], references: [id], onDelete: SetNull)
+  contributions       ProjectContribution[]
+  outcomes            OutcomeEvidence[]
+  stories             Story[]
+  sectionHealth       ProjectSectionHealth[]
+  sessions            IntakeSession[]     @relation("SessionCurrentProject")
+  entries             ProjectUpdateEntry[]
+  followUpTasks       FollowUpTask[]
+  facts               StructuredFact[]
+
+  @@index([updatedAt(sort: Desc)])
+  @@index([companyLabel])
+}
+
+model ProjectContribution {
+  id             String         @id @default(cuid())
+  projectId      String
+  responsibility String
+  action         String?
+  ownershipLevel String?
+  tools          String[]
+  confidence     FactConfidence @default(INFERRED)
+  sourceAnswerId String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, updatedAt(sort: Desc)])
+}
+
+model OutcomeEvidence {
+  id             String         @id @default(cuid())
+  projectId      String
+  metricName     String?
+  metricValue    String?
+  impactSummary  String
+  evidenceLink   String?
+  artifactLabel  String?
+  confidence     FactConfidence @default(INFERRED)
+  sourceAnswerId String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, updatedAt(sort: Desc)])
+}
+
+model Story {
+  id             String         @id @default(cuid())
+  careerPeriodId String?
+  title          String
+  situation      String?
+  task           String?
+  action         String?
+  result         String?
+  confidence     FactConfidence @default(INFERRED)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  period         CareerPeriod?  @relation(fields: [careerPeriodId], references: [id], onDelete: SetNull)
+  projects       Project[]
+
+  @@index([updatedAt(sort: Desc)])
+}
+
+model IntakeSession {
+  id               String         @id @default(cuid())
+  profileId        String
+  currentProjectId String?
+  mode             IntakeMode
+  title            String?
+  startedAt        DateTime       @default(now())
+  endedAt          DateTime?
+  profile          PersonProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  currentProject   Project?       @relation("SessionCurrentProject", fields: [currentProjectId], references: [id], onDelete: SetNull)
+  answers          IntakeAnswer[]
+  updates          ProjectUpdateEntry[]
+
+  @@index([profileId, startedAt(sort: Desc)])
+}
+
+model IntakeAnswer {
+  id             String         @id @default(cuid())
+  sessionId      String
+  role           String
+  content        String
+  channel        String         @default("text")
+  sourceAudioUrl String?
+  createdAt      DateTime       @default(now())
+  session        IntakeSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  extractedFacts StructuredFact[]
+
+  @@index([sessionId, createdAt])
+}
+
+model StructuredFact {
+  id             String         @id @default(cuid())
+  answerId       String
+  projectId      String?
+  factType       String
+  factValue      Json
+  confidence     FactConfidence @default(INFERRED)
+  isArchived     Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  answer         IntakeAnswer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  project        Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, factType])
+}
+
+model ProjectSectionHealth {
+  id            String        @id @default(cuid())
+  projectId     String
+  sectionKey    String
+  coverageScore Int           @default(0)
+  freshnessScore Int          @default(0)
+  status        SectionStatus @default(MISSING)
+  reason        String?
+  updatedAt     DateTime      @updatedAt
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, sectionKey])
+}
+
+model ProjectUpdateEntry {
+  id                     String         @id @default(cuid())
+  sessionId              String
+  projectId              String?
+  rawSummary             String
+  needsProjectAssignment Boolean        @default(false)
+  assignmentConfidence   Float?
+  createdAt              DateTime       @default(now())
+  session                IntakeSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  project                Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([needsProjectAssignment, createdAt(sort: Desc)])
+}
+
+model FollowUpTask {
+  id             String         @id @default(cuid())
+  profileId      String
+  projectId      String?
+  title          String
+  prompt         String
+  reason         String?
+  scheduledFor   DateTime
+  status         FollowUpStatus @default(OPEN)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  profile        PersonProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  project        Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([profileId, status, scheduledFor])
+}

@@ -1,17 +1,25 @@
 {
-  "name": "careerledger",
+  "name": "career-ledger",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "openapi:download": "mkdir -p openapi && curl -fsSL https://space.ai-builders.com/backend/openapi.json -o openapi/ai-builder-space.json",
+    "openapi:types": "openapi-typescript openapi/ai-builder-space.json -o src/generated/ai-builder-api.ts",
+    "prepare:api": "npm run openapi:download && npm run openapi:types"
   },
   "dependencies": {
+    "@prisma/client": "^7.8.0",
     "next": "16.2.4",
+    "openapi-typescript": "^7.13.0",
+    "pdf-parse": "^2.4.5",
+    "prisma": "^7.8.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

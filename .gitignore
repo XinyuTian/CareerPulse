@@ -22,6 +22,9 @@
 
 # misc
 .DS_Store
+
+# local persisted project store (dev / single-node)
+/.data/
 *.pem
 
 # debug
@@ -39,3 +42,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
