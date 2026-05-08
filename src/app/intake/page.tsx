@@ -75,6 +75,7 @@ function IntakePage() {
   const chunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const messagesScrollRef = useRef<HTMLDivElement | null>(null);
   const [uploadTargetId, setUploadTargetId] = useState<string>("");
   const [uploadBusy, setUploadBusy] = useState(false);
   const [titleEditOpen, setTitleEditOpen] = useState(false);
@@ -96,6 +97,12 @@ function IntakePage() {
     const max = 200;
     el.style.height = `${Math.min(el.scrollHeight, max)}px`;
   }, [input]);
+
+  useEffect(() => {
+    const el = messagesScrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages, status]);
 
   const listedProjects = useMemo(
     () => projects.filter((p) => p.id !== UNKNOWN_PROJECT_ID),
@@ -684,7 +691,10 @@ function IntakePage() {
 
           <div className="grid gap-4 lg:grid-cols-[2fr,1fr]">
             <section className="rounded-xl border bg-slate-50 p-3">
-              <div className="mb-3 max-h-[420px] space-y-3 overflow-y-auto p-1">
+              <div
+                ref={messagesScrollRef}
+                className="mb-3 max-h-[420px] space-y-3 overflow-y-auto p-1"
+              >
                 {messages.map((message, index) => (
                   <div
                     key={message.id ?? `${message.role}-${index}-${message.createdAt ?? ""}`}
