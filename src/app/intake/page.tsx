@@ -74,7 +74,7 @@ function IntakePage() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const messageInputRef = useRef<HTMLInputElement | null>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
   const [uploadTargetId, setUploadTargetId] = useState<string>("");
   const [uploadBusy, setUploadBusy] = useState(false);
   const [titleEditOpen, setTitleEditOpen] = useState(false);
@@ -87,6 +87,15 @@ function IntakePage() {
   useEffect(() => {
     projectsRef.current = projects;
   }, [projects]);
+
+  useEffect(() => {
+    const el = messageInputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    // Cap at ~8 lines (line-height ~1.25rem * 8 + padding).
+    const max = 200;
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+  }, [input]);
 
   const listedProjects = useMemo(
     () => projects.filter((p) => p.id !== UNKNOWN_PROJECT_ID),
@@ -699,13 +708,20 @@ function IntakePage() {
                 ))}
               </div>
 
-              <form className="flex gap-2" onSubmit={onSubmit}>
-                <input
+              <form className="flex items-end gap-2" onSubmit={onSubmit}>
+                <textarea
                   ref={messageInputRef}
-                  className="flex-1 rounded-lg border px-3 py-2 text-sm"
+                  rows={1}
+                  className="flex-1 resize-none overflow-y-auto rounded-lg border px-3 py-2 text-sm leading-5"
                   placeholder="Type your update or use the mic..."
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                      event.preventDefault();
+                      void sendMessage(input, "text");
+                    }
+                  }}
                   readOnly={isRecording}
                   aria-busy={isRecording}
                 />
